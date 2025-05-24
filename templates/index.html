@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Website Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid #333;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            position: fixed;
+            height: 100vh;
+            z-index: 1000;
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: #1a1a1a;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-toggle:hover {
+            background: #2d3748;
+            transform: scale(1.1);
+        }
+
+        .sidebar h3 {
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            color: #e2e8f0;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .new-chat-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .conversation-item {
+            padding: 12px;
+            background: #2d3748;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .conversation-item:hover {
+            background: #4a5568;
+            transform: translateX(5px);
+        }
+
+        .conversation-item.active {
+            background: #667eea;
+            border-color: #764ba2;
+        }
+
+        .conversation-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .conversation-url {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            width: 100%;
+            transition: margin-left 0.3s ease;
+        }
+
+        .header {
+            background: black;
+            padding: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .url-section {
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .url-input {
+            flex: 1;
+            padding: 16px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: black;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: black;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            100% {
+                left: 100%;
+            }
+        }
+
+        .chat-section {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            min-height: 400px;
+        }
+
+        .chat-section.show {
+            display: flex;
+        }
+
+        .chat-box {
+            flex: 1;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            overflow-y: auto;
+            padding: 20px;
+            margin-bottom: 20px;
+            max-height: 600px;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .bot-message {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 14px 20px;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .user-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 6px;
+        }
+
+        .bot-bubble {
+            background: white;
+            color: #2d3748;
+            border: 2px solid #e2e8f0;
+            border-bottom-left-radius: 6px;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .bot-bubble h1, .bot-bubble h2, .bot-bubble h3 {
+            color: #1a202c;
+            margin: 16px 0 12px 0;
+            font-weight: 600;
+        }
+
+        .bot-bubble h1 { font-size: 1.3rem; }
+        .bot-bubble h2 { font-size: 1.2rem; }
+        .bot-bubble h3 { font-size: 1.1rem; }
+
+        .bot-bubble p {
+            margin: 12px 0;
+        }
+
+        .bot-bubble ul, .bot-bubble ol {
+            margin: 12px 0;
+            padding-left: 24px;
+        }
+
+        .bot-bubble li {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+
+        .bot-bubble strong {
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .bot-bubble em {
+            font-style: italic;
+            color: #4a5568;
+        }
+
+        .bot-bubble::before {
+            content: '🤖';
+            position: absolute;
+            left: -30px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+        }
+
+        .thinking {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .typing-dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        .question-input {
+            flex: 1;
+            padding: 16px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 25px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .question-input:focus {
+            outline: none;
+            border-color: black;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-indicator {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 250px;
+            }
+            .header h1 {
+                font-size: 2rem;
+            }
+            .content {
+                padding: 15px;
+            }
+            .input-group {
+                flex-direction: column;
+            }
+            .message-bubble {
+                max-width: 85%;
+            }
+            .sidebar-toggle {
+                top: 15px;
+                left: 15px;
+                padding: 10px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    
+    <div class="sidebar" id="sidebar">
+        <h3>Conversations</h3>
+        <button onclick="newConversation()" class="new-chat-btn">+ New Chat</button>
+        <div id="conversationList"></div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>AI Website Assistant</h1>
+            <p>Scrape any website and chat with its content using AI</p>
+        </div>
+
+        <div class="content">
+            <div class="url-section">
+                <div class="input-group">
+                    <input type="url" id="urlInput" class="url-input" placeholder="Enter website URL (e.g., https://example.com)" required>
+                    <button onclick="scrapeSite()" class="btn btn-primary" id="scrapeBtn">
+                        <span class="btn-text">Analyze Site</span>
+                    </button>
+                </div>
+                <div id="statusIndicator" class="status-indicator"></div>
+            </div>
+
+            <div id="chatSection" class="chat-section">
+                <div id="chatBox" class="chat-box">
+                    <div class="message bot-message">
+                        <div class="message-bubble bot-bubble">
+                            Welcome! I'm ready to answer questions about the website content.
+                        </div>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="questionInput" class="question-input" placeholder="Ask me anything about this website..." onkeypress="handleKeyPress(event)">
+                    <button onclick="sendQuestion()" class="btn btn-secondary" id="sendBtn">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let conversations = {};
+        let currentConversationId = null;
+        let isProcessing = false;
+        let sidebarOpen = false;
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebarOpen = !sidebarOpen;
+            
+            if (sidebarOpen) {
+                sidebar.classList.add('open');
+            } else {
+                sidebar.classList.remove('open');
+            }
+        }
+
+        // Close sidebar when clicking outside
+        document.addEventListener('click', (e) => {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.querySelector('.sidebar-toggle');
+            
+            if (sidebarOpen && !sidebar.contains(e.target) && !toggle.contains(e.target)) {
+                toggleSidebar();
+            }
+        });
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function newConversation() {
+            const id = generateId();
+            conversations[id] = {
+                id: id,
+                title: 'New Chat',
+                url: '',
+                content: '',
+                history: [],
+                messages: []
+            };
+            switchToConversation(id);
+            updateConversationList();
+        }
+
+        function switchToConversation(id) {
+            currentConversationId = id;
+            const conv = conversations[id];
+            
+            document.getElementById('urlInput').value = conv.url;
+            
+            if (conv.content) {
+                showChatSection();
+                renderMessages(conv.messages);
+            } else {
+                document.getElementById('chatSection').classList.remove('show');
+            }
+            
+            updateConversationList();
+        }
+
+        function updateConversationList() {
+            const list = document.getElementById('conversationList');
+            list.innerHTML = '';
+            
+            Object.values(conversations).reverse().forEach(conv => {
+                const item = document.createElement('div');
+                item.className = `conversation-item ${conv.id === currentConversationId ? 'active' : ''}`;
+                item.onclick = () => switchToConversation(conv.id);
+                
+                item.innerHTML = `
+                    <div class="conversation-title">${conv.title}</div>
+                    <div class="conversation-url">${conv.url || 'No URL yet'}</div>
+                `;
+                
+                list.appendChild(item);
+            });
+        }
+
+        function showStatus(message, type) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.textContent = message;
+            indicator.className = `status-indicator status-${type}`;
+            indicator.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => indicator.style.display = 'none', 3000);
+            }
+        }
+
+        function showChatSection() {
+            document.getElementById('chatSection').classList.add('show');
+        }
+
+        function renderMessages(messages) {
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML = '';
+            
+            if (messages.length === 0) {
+                chatBox.innerHTML = `
+                    <div class="message bot-message">
+                        <div class="message-bubble bot-bubble">
+                            Perfect! I've analyzed the website content. What would you like to know?
+                        </div>
+                    </div>
+                `;
+            } else {
+                messages.forEach(msg => {
+                    addMessageToDOM(msg.sender, msg.text);
+                });
+            }
+        }
+
+        function addMessageToDOM(sender, text, isThinking = false) {
+            const chatBox = document.getElementById('chatBox');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = `message-bubble ${sender}-bubble`;
+            
+            if (isThinking) {
+                bubbleDiv.innerHTML = `
+                    <span class="thinking">
+                        Thinking
+                        <div class="typing-dots">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </span>
+                `;
+            } else {
+                bubbleDiv.innerHTML = formatBotResponse(text);
+            }
+            
+            messageDiv.appendChild(bubbleDiv);
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            return bubbleDiv;
+        }
+
+        function formatBotResponse(text) {
+            // Split text into sections based on numbered items or clear breaks
+            let formatted = text;
+            
+            // Convert numbered lists (1. 2. 3. etc.) to proper HTML lists
+            const numberedListRegex = /(\d+\.\s+[^:]+:?\s*[^\d]*?)(?=\d+\.\s+|$)/g;
+            const matches = text.match(numberedListRegex);
+            
+            if (matches && matches.length > 2) {
+                // We have a proper numbered list
+                const listItems = matches.map(item => {
+                    const cleanItem = item.replace(/^\d+\.\s*/, '').trim();
+                    // Split title and description if there's a colon
+                    if (cleanItem.includes(':')) {
+                        const [title, ...descParts] = cleanItem.split(':');
+                        const description = descParts.join(':').trim();
+                        return `<li><strong>${title.trim()}:</strong> ${description}</li>`;
+                    }
+                    return `<li>${cleanItem}</li>`;
+                });
+                
+                // Find the intro text before the first numbered item
+                const firstNumberMatch = text.match(/^(.*?)(?=\d+\.\s+)/s);
+                const intro = firstNumberMatch ? firstNumberMatch[1].trim() : '';
+                
+                // Find any concluding text after the last numbered item
+                const lastItem = matches[matches.length - 1];
+                const conclusionMatch = text.split(lastItem)[1];
+                const conclusion = conclusionMatch ? conclusionMatch.trim() : '';
+                
+                formatted = '';
+                if (intro) formatted += `<p>${intro}</p>`;
+                formatted += `<ol>${listItems.join('')}</ol>`;
+                if (conclusion) formatted += `<p>${conclusion}</p>`;
+            } else {
+                // No proper numbered list, just format paragraphs
+                formatted = text
+                    .split(/\n\s*\n/)
+                    .map(para => para.trim())
+                    .filter(para => para.length > 0)
+                    .map(para => `<p>${para}</p>`)
+                    .join('');
+            }
+            
+            return formatted;
+        }
+
+        function isValidUrl(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        async function scrapeSite() {
+            const urlInput = document.getElementById('urlInput');
+            const scrapeBtn = document.getElementById('scrapeBtn');
+            const url = urlInput.value.trim();
+            
+            if (!url) {
+                showStatus('Please enter a valid URL', 'error');
+                return;
+            }
+
+            if (!isValidUrl(url)) {
+                showStatus('Please enter a valid URL format', 'error');
+                return;
+            }
+
+            if (!currentConversationId) newConversation();
+
+            isProcessing = true;
+            scrapeBtn.disabled = true;
+            scrapeBtn.classList.add('loading');
+            scrapeBtn.querySelector('.btn-text').textContent = 'Analyzing...';
+
+            try {
+                const response = await fetch('/scrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.content) {
+                    const conv = conversations[currentConversationId];
+                    conv.url = url;
+                    conv.title = new URL(url).hostname;
+                    conv.content = data.content;
+                    conv.history = [];
+                    conv.messages = [];
+                    
+                    showStatus('Website analyzed successfully!', 'success');
+                    showChatSection();
+                    renderMessages([]);
+                    updateConversationList();
+                } else {
+                    throw new Error(data.error || 'Failed to scrape website');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                isProcessing = false;
+                scrapeBtn.disabled = false;
+                scrapeBtn.classList.remove('loading');
+                scrapeBtn.querySelector('.btn-text').textContent = 'Analyze Site';
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendQuestion();
+            }
+        }
+
+        async function sendQuestion() {
+            const questionInput = document.getElementById('questionInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const question = questionInput.value.trim();
+            
+            if (!question || isProcessing || !currentConversationId) return;
+
+            isProcessing = true;
+            sendBtn.disabled = true;
+            
+            const conv = conversations[currentConversationId];
+            conv.messages.push({ sender: 'user', text: question });
+            conv.history.push({ role: 'user', content: question });
+            
+            addMessageToDOM('user', question);
+            questionInput.value = '';
+
+            const thinkingBubble = addMessageToDOM('bot', '', true);
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        history: conv.history,
+                        context: conv.content
+                    })
+                });
+
+                const data = await response.json();
+                const reply = data.answer || data.error || "I'm sorry, I couldn't process your question.";
+                
+                thinkingBubble.innerHTML = formatBotResponse(reply);
+                conv.messages.push({ sender: 'bot', text: reply });
+                conv.history.push({ role: 'assistant', content: reply });
+
+            } catch (error) {
+                thinkingBubble.textContent = 'Sorry, there was an error processing your question. Please try again.';
+            } finally {
+                isProcessing = false;
+                sendBtn.disabled = false;
+            }
+        }
+
+        // Initialize with first conversation
+        newConversation();
+    </script>
+</body>
+</html>
