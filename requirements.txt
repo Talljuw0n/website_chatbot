@@ -1,0 +1,20 @@
+Flask==2.3.3
+requests==2.31.0
+python-dotenv==1.0.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+selenium==4.15.2
+urllib3==2.0.7
+Werkzeug==2.3.7
+gunicorn 
+
+
+
+# Flask: Web framework for your backend
+# requests: For making HTTP requests to the Groq API
+# python-dotenv: For loading environment variables from .env file
+# beautifulsoup4: For HTML parsing in web scraping
+# lxml: XML/HTML parser (used by BeautifulSoup)
+# selenium: For scraping dynamic websites 
+# urllib3: HTTP library (dependency for requests)
+# Werkzeug: WSGI toolkit (Flask dependency)
