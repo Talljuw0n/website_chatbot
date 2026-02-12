@@ -161,7 +161,7 @@ def ask_llama_with_history(messages):
         }
         
         data = {
-            "model": "llama3-8b-8192",
+            "model": "llama-3.3-70b-versatile",
             "messages": messages,
             "temperature": 0.7,
             "max_tokens": 1024,
